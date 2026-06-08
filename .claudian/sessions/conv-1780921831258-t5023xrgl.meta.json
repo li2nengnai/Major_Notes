@@ -1,0 +1,24 @@
+{
+  "id": "conv-1780921831258-t5023xrgl",
+  "providerId": "claude",
+  "title": "你好",
+  "titleGenerationStatus": "failed",
+  "createdAt": 1780921831262,
+  "updatedAt": 1780921869076,
+  "lastResponseAt": 1780921869076,
+  "sessionId": "02c937d9-aab0-4668-87c4-afbc552717a3",
+  "providerState": {
+    "providerSessionId": "02c937d9-aab0-4668-87c4-afbc552717a3"
+  },
+  "currentNote": "Major_Notes/未命名.md",
+  "usage": {
+    "model": "haiku",
+    "inputTokens": 21110,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 0,
+    "contextWindow": 200000,
+    "contextTokens": 21110,
+    "percentage": 11,
+    "contextWindowIsAuthoritative": true
+  }
+}
