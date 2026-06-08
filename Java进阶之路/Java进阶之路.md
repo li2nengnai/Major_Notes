@@ -17,7 +17,13 @@ tags: [java, 学习路线, 干货]
 基础语法 · 面向对象 · 集合框架 · IO · 异常 · 常用工具
 
 ### [[02-Java进阶/index|🚀 Java进阶]]
-并发编程 · JVM · Java 8+ · NIO · 网络编程
+集合框架 · HashMap · Java 8+
+
+### [[03-并发编程/index|🔁 并发编程]]
+线程 · 锁 · AQS · 线程池 · JUC
+
+### [[04-JVM/index|⚙️ JVM]]
+内存结构 · 类加载 · GC · 调优
 
 ### [[05-企业级开发/index|🏗️ 企业级开发]]
 Spring Boot · MySQL · Redis · MQ · 微服务 · Docker
