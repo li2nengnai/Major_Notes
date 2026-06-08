@@ -4,20 +4,20 @@
   "title": "你好",
   "titleGenerationStatus": "failed",
   "createdAt": 1780921831262,
-  "updatedAt": 1780924652912,
-  "lastResponseAt": 1780924652912,
+  "updatedAt": 1780925163115,
+  "lastResponseAt": 1780925163115,
   "sessionId": "02c937d9-aab0-4668-87c4-afbc552717a3",
   "providerState": {
     "providerSessionId": "02c937d9-aab0-4668-87c4-afbc552717a3"
   },
   "usage": {
     "model": "haiku",
-    "inputTokens": 366,
+    "inputTokens": 1030,
     "cacheCreationInputTokens": 0,
-    "cacheReadInputTokens": 167040,
+    "cacheReadInputTokens": 168832,
     "contextWindow": 200000,
-    "contextTokens": 167406,
-    "percentage": 84,
+    "contextTokens": 169862,
+    "percentage": 85,
     "contextWindowIsAuthoritative": true
   }
 }
