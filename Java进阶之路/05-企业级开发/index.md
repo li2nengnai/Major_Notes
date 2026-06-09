@@ -28,5 +28,8 @@ SORT 优先级 desc
 - [[MySQL事务与MVCC]]
 - [[Redis核心知识点]] ⭐⭐⭐
 
+### ORM 框架
+- [[mybatis/MyBatis从零入门|MyBatis从零入门]] ⭐⭐⭐ — 注解版 CRUD/核心流程
+
 ### 中间件
 - [[消息队列Kafka]]
