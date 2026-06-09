@@ -264,6 +264,29 @@ int insert(User user);
 
 **`#{}` = 占个坑，MyBatis 帮你填**。它自动用 `PreparedStatement` 的 `?` 替换，还能防 SQL 注入。
 
+### 进阶：多参数怎么传
+
+```java
+// 方式1：@Param 指定参数名（推荐，可读性好）
+@Select("SELECT * FROM user WHERE username=#{username} AND age=#{age}")
+List<User> selectByCondition(@Param("username") String username,
+                             @Param("age") Integer age);
+
+// 方式2：Map 传参（适合参数多的时候）
+@Select("SELECT * FROM user WHERE username=#{username} AND age=#{age}")
+List<User> selectByMap(Map<String,Object> map);
+
+// 调用时：
+Map<String,Object> map = new HashMap<>();
+map.put("username","张三");
+map.put("age",22);
+mapper.selectByMap(map);
+```
+
+**两个注意点：**
+- 单参数时不用加 `@Param`（MyBatis 能自己识别）
+- 多参数时**必须加 `@Param`**，否则 MyBatis 不知道 `#{username}` 对应哪个参数
+
 ---
 
 ## 第五步：MyBatisUtil —— 工具类（固定模板）
@@ -458,14 +481,29 @@ MyBatis 用 **JDK 动态代理** 自动生成了一个实现类。你调 `sessio
 
 **查询不需要事务，增删改需要**。
 
+### Q5：字段名对不上（不光是驼峰问题）怎么办？
+
+用 `@Results` 注解手动指定映射：
+
+```java
+@Select("SELECT * FROM user WHERE id = #{id}")
+@Results({
+    @Result(column = "数据库列名", property = "实体属性名"),
+    @Result(column = "create_time", property = "createTime")
+})
+User selectById(Integer id);
+```
+
+### Q6：一个用户有多个订单 / 多个角色怎么查？
+
+这是 **关联查询**，用 `@One`（一对一）和 `@Many`（一对多/多对多）注解，见进阶笔记：
+➡️ [[mybatis/MyBatis关联查询|MyBatis关联查询（一对一/一对多/多对多）]]
+
 ---
 
-## 你的代码里可以继续深入的点
+## 下一步
 
-1. **XML Mapper 方式**（替代注解）—— 复杂 SQL 用 XML 更灵活
-2. **动态 SQL**（`<if>`、`<where>`、`<foreach>`）—— 条件查询必备
-3. **多表联查**（`@Results` + `@Many`/`@One`）
-4. **Spring Boot 整合 MyBatis**（实际开发都在 Spring Boot 里用）
+➡️ [[mybatis/MyBatis关联查询|MyBatis进阶：关联查询与 @Results 映射]]
 
 ---
 
