@@ -32,6 +32,7 @@ SORT 优先级 desc
 - [[mybatis/MyBatis从零入门|MyBatis从零入门]] ⭐⭐⭐ — 注解版 CRUD/核心流程
 - [[mybatis/MyBatis关联查询|MyBatis关联查询]] ⭐⭐⭐ — 一对一/一对多/多对多/@Results
 - [[mybatis/MyBatis建表脚本|建表脚本]] — 配套 5 张表 SQL
+- [[mybatis/MyBatis-Plus从零入门|MyBatis-Plus从零入门]] ⭐⭐⭐ — BaseMapper/QueryWrapper/MP vs MyBatis
 
 ### 中间件
 - [[消息队列Kafka]]
