@@ -1,59 +1,75 @@
 ---
+title: Scanner 键盘录入
 created: 2026-06-08
-topic: Java SE 考点复习 - Scanner 键盘录入
-tags: [Java, 编程笔记, 考点复习, Scanner]
+tags: [技术/Java/基础, 技术/Java/IO, 笔记/考点复习]
 ---
 
-# Scanner 键盘录入
+# [[Scanner]] 键盘录入
 
 ## 📌 课程模块
 
 pk002 · 键盘输入交互 · **理解考点**
 
-## 💻 核心代码示例
+## 核心概念
+
+[[Scanner]] 是 Java 提供的键盘输入工具，三步法：
+
+1. **导包**：`import java.util.Scanner;`
+2. **创建对象**：`Scanner sc = new Scanner(System.in);`
+3. **调用方法**：`sc.nextInt()` / `sc.next()`
+
+程序执行到 `nextInt()` 时会**阻塞等待**，直到用户按回车。
+
+## 语法格式
 
 ```java
-import java.util.Scanner;              // 1️⃣ 导包（IDEA自动导入）
-
-public class ScannerDemo1 {
-    public static void main(String[] args) {
-        // 2️⃣ 创建键盘扫描器对象
-        Scanner sc = new Scanner(System.in);
-
-        // 3️⃣ 接收键盘输入
-        System.out.println("请输入您的年龄：");
-        int age = sc.nextInt();          // 等待输入整数，回车后获取
-
-        System.out.println("请输入您的名字：");
-        String name = sc.next();         // 等待输入字符串，回车后获取
-
-        System.out.println(name + "欢迎您进入系统~");
-    }
-}
+Scanner sc = new Scanner(System.in);
+int age = sc.nextInt();      // 读取整数
+String name = sc.next();     // 读取字符串（遇到空格停止）
+String line = sc.nextLine(); // 读取整行（可包含空格）
 ```
 
-## 🧩 知识点拆解
+## 踩坑记录
 
-### 知识点1：Scanner 三步法
+> [!warning] nextInt() 后 nextLine() 读不到内容
+> **现象**：输入年龄后按回车，名字没等输入就直接跳过了
+> **原因**：`nextInt()` 只读取数字，把换行符留在了缓冲区。后面的 `nextLine()` 直接读到了这个空行。
+> ```java
+> Scanner sc = new Scanner(System.in);
+> int age = sc.nextInt();      // 输入 18 按回车，18 被读取，\n 留在缓冲区
+> String name = sc.nextLine(); // 直接读到 \n，返回空字符串！
+> ```
+> **解决**：
+> ```java
+> int age = sc.nextInt();
+> sc.nextLine();               // 吃掉残留的换行符
+> String name = sc.nextLine(); // 正常读取
+> ```
+> 或者统一用 `nextLine()` 读取后手动转换：
+> ```java
+> int age = Integer.parseInt(sc.nextLine());
+> String name = sc.nextLine();
+> ```
 
-- **是什么**：Java 提供 `java.util.Scanner` 类接收键盘输入
-- **使用流程**：导包 → 创建对象 → 调用方法
-- **在代码中的作用**：实现人机交互，动态获取用户输入的数据
-- **老师强调的要点**：
-  - `System.in` 代表键盘输入
-  - `sc.nextInt()` 等待输入整数，`sc.next()` 等待输入字符串
-  - 程序执行到 `nextInt()` 时会阻塞，等待用户按回车键
-  - IDEA 会自动导包，手动写用 `import java.util.Scanner;`
+## 实战案例
 
-## ⚠️ 常见考题 / 易错点
+```java
+Scanner sc = new Scanner(System.in);
+System.out.println("请输入年龄：");
+int age = sc.nextInt();
+System.out.println("请输入姓名：");
+String name = sc.next();
+System.out.println(name + "的年龄是" + age);
+```
 
-1. **常见错误**：`nextInt()` 后使用 `nextLine()` 会读走换行符（`nextInt()` 只读取数字，留下换行符，`nextLine()` 直接读取到该换行符）
-2. **解决方案**：在 `nextInt()` 后加一个 `nextLine()` 吃掉换行
-3. **出题方向**：结合分支循环做交互式菜单（如 ATM 系统菜单）
-4. **选择题——`next()` vs `nextLine()`**：
-   - `next()`：读取到空格/回车停止（不能包含空格）
-   - `nextLine()`：读取整行直到回车（可包含空格）
+## 拓展延伸
+
+→ [[05-流程控制]]（配合 Scanner 做交互菜单）· [[../../Java进阶之路/01-Java基础/异常处理|异常处理]]（输入非数字时的异常处理）
+
+## 知识依赖图
+
+先掌握 [[01-变量与数据类型|变量]] → 再学本篇 → 延伸 [[05-流程控制|交互菜单]] · [[13-异常处理|异常捕获]]
 
 ---
 
-#Java #编程笔记 #考点复习 #Scanner #键盘输入
+#技术/Java/基础 #技术/Java/IO #笔记/考点复习

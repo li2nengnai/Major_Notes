@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/jvm/what-is-jvm.html
-tags: [java, jvm, 虚拟机]
+tags: [笔记/进阶之路, 技术/Java/JVM, 导航]
 ---
 
 # ⚙️ JVM 核心知识

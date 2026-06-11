@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/
-tags: [java, spring, mysql, redis]
+tags: [笔记/进阶之路, 技术/Java/企业级, 导航]
 ---
 
 # 🏗️ 企业级开发

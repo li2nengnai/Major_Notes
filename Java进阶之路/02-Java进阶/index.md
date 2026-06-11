@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/
-tags: [java, 进阶]
+tags: [笔记/进阶之路, 技术/Java/进阶, 导航]
 ---
 
 # 🚀 Java 进阶

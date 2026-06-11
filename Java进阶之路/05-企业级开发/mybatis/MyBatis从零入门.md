@@ -1,111 +1,126 @@
 ---
+title: MyBatis 从零入门（注解+XML双模式）
 created: 2026-06-09
-source: E:\MY\IDE_wj\mybatis_v1
-tags: [java, mybatis, orm, 数据库]
+source: E:\MY\IDE_wj\mybatis_v1 + 老师教程
+tags: [技术/框架/MyBatis, 技术/Java/数据库, 技术/数据库/MySQL, 笔记/进阶之路]
 ---
 
-# MyBatis 从零入门（基于注解版）
+# [[MyBatis]] 从零入门 —— 搭出第一个可运行项目
 
-## MyBatis 是什么？为什么要用它？
+## 核心概念
 
-### 之前用 JDBC 写数据库有多痛苦
+### 这玩意儿是干啥的
+
+[[MyBatis]] 是 Java 操作数据库的「工具人」。你负责写 [[SQL]]，它负责跑腿——替你连数据库、执行 SQL、把结果转成 [[Java]] 对象。
+
+### 没有它之前有多痛苦
+
+用纯 [[JDBC]] 查一条记录：
 
 ```java
-// 纯 JDBC 查询一个用户 —— 全是样板代码
-Connection conn = DriverManager.getConnection(url, user, password);
-String sql = "SELECT * FROM user WHERE id = ?";
-PreparedStatement ps = conn.prepareStatement(sql);
+// 真正有用的代码不到 30%，剩下全是样板
+Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+PreparedStatement ps = conn.prepareStatement("SELECT * FROM user WHERE id = ?");
 ps.setInt(1, 1);
 ResultSet rs = ps.executeQuery();
 User user = new User();
 if (rs.next()) {
-    user.setId(rs.getInt("id"));
+    user.setId(rs.getInt("id"));           // 手动映射每一列
     user.setUsername(rs.getString("username"));
-    // ... 每个字段手动映射
+    user.setEmail(rs.getString("email"));
 }
-// 还要关 rs, ps, conn
+rs.close();  // 手动关闭
+ps.close();
+conn.close();
 ```
 
-**痛点**：
-- 代码大量重复（获取连接、创建语句、处理结果、关闭资源）
-- SQL 和 Java 代码硬耦合在一起
-- 结果集要**手动逐字段**赋值给对象
+**三个烦：** 代码重复烦、手动映射烦、关闭资源烦。[[MyBatis]] 把这三个烦全包了。
 
-### MyBatis 做了什么
-
-**一句话**：MyBatis 替你干了 JDBC 里所有重复劳动，你只需要写 SQL 和告诉它结果怎么映射。
+### 它怎么工作的
 
 ```
-你写的 → SQL 语句 + 参数
-            ↓
-MyBatis  → 帮你创建连接、执行SQL、封装结果
-            ↓
-你拿到的 → Java 对象（List<User>）
+你的 Java 代码 → 调 Mapper 接口方法
+                     ↓
+MyBatis 自动：拿连接 → 解析 SQL → 替换参数 → 执行 → 封装结果
+                     ↓
+你直接拿到 List<User>，啥也不用管
 ```
 
 ---
 
-## 项目整体结构（先看全局）
+## 语法格式 / 使用方式
 
-```
-mybatis_v1/
-├── pom.xml                              ← Maven 依赖（引入 mybatis、mysql 驱动）
-└── src/
-    └── main/
-        ├── java/com/demo/
-        │   ├── entity/User.java         ← 实体类：对应数据库的 user 表
-        │   ├── mapper/UserMapper.java   ← Mapper接口：写 SQL 的地方（核心！）
-        │   ├── util/MyBatisUtil.java    ← 工具类：获取数据库连接
-        │   └── App.java                 ← 启动类（本项目中未使用）
-        └── resources/
-            └── mybatis-config.xml       ← 全局配置文件：告诉 MyBatis 连哪个库
-```
+### 第一步：建数据库和表
 
-**MyBatis 的四块积木**（按顺序理解）：
+```sql
+-- 复制这段 SQL 去 MySQL 里跑一遍，数据库就有了
+CREATE DATABASE IF NOT EXISTS mybatis_demo DEFAULT CHARACTER SET utf8mb4;
+USE mybatis_demo;
 
-```
-① pom.xml（添加依赖）
-    ↓
-② mybatis-config.xml（连接数据库 + 配置）
-    ↓
-③ UserMapper.java（写 SQL 语句）
-    ↓
-④ 测试类（调用 Mapper 执行 SQL）
+CREATE TABLE `user` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `username` VARCHAR(50) NOT NULL COMMENT '用户名',
+    `age` INT COMMENT '年龄',
+    `email` VARCHAR(50) COMMENT '邮箱',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+) COMMENT '用户表';
+
+INSERT INTO `user` (username, age, email) VALUES
+('张三', 22, 'zhangsan@163.com'),
+('李四', 25, 'lisi@163.com');
 ```
 
 ---
 
-## 第一步：pom.xml —— 引入 MyBatis
+### 第二步：Maven 依赖（[[pom.xml]]）
+
+> ⚠️ **版本说明**：以下依赖适用于 MySQL 8.0.x + [[MyBatis]] 3.5.x。如果你用 MySQL 5.x，驱动用 `com.mysql.jdbc.Driver`；如果 MySQL 8.1+，[[Maven]] 坐标改为 `com.mysql:mysql-connector-j`。
 
 ```xml
-<!-- MyBatis 核心 -->
-<dependency>
-    <groupId>org.mybatis</groupId>
-    <artifactId>mybatis</artifactId>
-    <version>3.5.13</version>
-</dependency>
+<dependencies>
+    <!-- MyBatis 核心 -->
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis</artifactId>
+        <version>3.5.13</version>
+    </dependency>
 
-<!-- MySQL 驱动（MyBatis 用它连数据库） -->
-<dependency>
-    <groupId>mysql</groupId>
-    <artifactId>mysql-connector-java</artifactId>
-    <version>8.0.33</version>
-</dependency>
+    <!-- MySQL 驱动：groupID 从 MySQL 8.1 起改为 com.mysql，artifact 改为 mysql-connector-j -->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>8.0.33</version>
+        <scope>runtime</scope>  <!-- runtime 表示编译时不需要，运行时才用 -->
+    </dependency>
 
-<!-- 单元测试 -->
-<dependency>
-    <groupId>junit</groupId>
-    <artifactId>junit</artifactId>
-    <version>4.13.2</version>
-    <scope>test</scope>
-</dependency>
+    <!-- JUnit 测试 -->
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.13.2</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+                <source>8</source>
+                <target>8</target>
+                <encoding>UTF-8</encoding>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 ```
-
-💡 **类比**：装软件前先装依赖，MyBatis 和 MySQL 驱动就是程序的"基础软件包"。
 
 ---
 
-## 第二步：mybatis-config.xml —— 告诉 MyBatis 连哪个库
+### 第三步：[[mybatis-config.xml]] 核心配置
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -114,397 +129,522 @@ mybatis_v1/
         "http://mybatis.org/dtd/mybatis-3-config.dtd">
 <configuration>
 
-    <!-- 
-        驼峰自动映射：数据库 create_time → Java createTime
-        没这个的话，你得自己写 ResultMap 映射
+    <!--
+        为什么要有 properties？
+        数据库密码写死在 XML 里不安全，传到 Git 就泄露了。
+        用外部 properties 文件 + 占位符 ${}，密码只在本地文件里。
     -->
+    <properties resource="db.properties"/>
+
     <settings>
+        <!--
+            驼峰自动映射
+            为什么开？数据库习惯用下划线（create_time），Java 习惯驼峰（createTime）。
+            开这个开关后，MyBatis 自动把 create_time → createTime，不用你写 ResultMap。
+            如果你没开，那就要手动 @Result(column="create_time", property="createTime")。
+        -->
         <setting name="mapUnderscoreToCamelCase" value="true"/>
-        <!-- 控制台打印 SQL（调试神器） -->
+
+        <!--
+            控制台打印 SQL 日志
+            为什么开？新手 90% 的 bug 看打印的 SQL 一眼就能发现：
+            - 参数传错了？看 ? 的值
+            - SQL 语法错了？把打印的 SQL 复制到 Navicat 跑一遍
+        -->
         <setting name="logImpl" value="STDOUT_LOGGING"/>
     </settings>
 
-    <!-- 实体类别名：写代码时可以省略包名 -->
     <typeAliases>
+        <!--
+            实体类别名：配置后写 mapper 时可以用 User 代替 com.demo.entity.User
+            不配也行，就是每个地方都要写全限定类名，手累。
+        -->
         <package name="com.demo.entity"/>
     </typeAliases>
 
-    <!-- 数据库连接信息 -->
+    <!--
+        数据库环境配在这里
+        default="development" 表示默认用 development 这套配置
+        你可以配多套：development（开发）、test（测试）、production（生产），切换 default 就行
+    -->
     <environments default="development">
         <environment id="development">
+            <!--
+                transactionManager 事务管理器
+                JDBC：手动控制提交/回滚（适合学习）
+                MANAGED：让容器管理事务（适合 Spring 整合）
+            -->
             <transactionManager type="JDBC"/>
+
+            <!--
+                dataSource 连接池
+                POOLED：用的连接池，每次拿连接不用新建，用完放回去（推荐）
+                UNPOOLED：每次新建连接，慢
+                JNDI：从 Tomcat 等容器拿连接池（生产环境常见）
+            -->
             <dataSource type="POOLED">
-                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
-                <property name="url" value="jdbc:mysql://localhost:3306/你的数据库名?..."/>
-                <property name="username" value="root"/>
-                <property name="password" value="你的密码"/>
+                <property name="driver" value="${jdbc.driver}"/>
+                <property name="url" value="${jdbc.url}"/>
+                <property name="username" value="${jdbc.username}"/>
+                <property name="password" value="${jdbc.password}"/>
             </dataSource>
         </environment>
     </environments>
 
-    <!-- 告诉 MyBatis 去哪里找 Mapper（SQL 所在的接口） -->
     <mappers>
+        <!-- 扫描整个包下的 Mapper 接口（注解方式） -->
         <package name="com.demo.mapper"/>
     </mappers>
-
 </configuration>
 ```
 
-### 配置里每个标签是干啥的
+配套的 `db.properties`（放在 `src/main/resources/` 下）：
 
-| 标签 | 作用 | 类比 |
-|------|------|------|
-| `<settings>` | 全局开关（驼峰/日志/缓存） | 手机设置 |
-| `<typeAliases>` | 给实体类起短名 | 外号 |
-| `<environments>` | 数据库连接信息 | 家庭住址 |
-| `<mappers>` | 告诉 MyBatis 去哪里找 SQL | 目录索引 |
+```properties
+# 不要把这个文件提交到 Git！（加到 .gitignore 里）
+jdbc.driver=com.mysql.cj.jdbc.Driver
+jdbc.url=jdbc:mysql://localhost:3306/mybatis_demo?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+jdbc.username=root
+jdbc.password=你的密码
+```
+
+**URL 参数详解（面试可能问）：**
+
+| 参数 | 作用 | 不加的后果 |
+|------|------|-----------|
+| `useUnicode=true` | 启用 Unicode 编码 | 中文存成 `???` |
+| `characterEncoding=utf-8` | 指定用 UTF-8 | 中文乱码 |
+| `serverTimezone=Asia/Shanghai` | 设置时区为东八区 | 时间差 8 小时 |
+| `useSSL=false` | 关闭 SSL 加密（开发环境） | 开发环境多此一举 |
+| `allowPublicKeyRetrieval=true` | 允许获取公钥（MySQL 8.0+） | 连不上报 `Public Key Retrieval` 错误 |
 
 ---
 
-## 第三步：实体类 User —— 对应数据库表
+### 第四步：实体类（[[JavaBean]]）
 
 ```java
-// 数据库 user 表 → Java 的 User 类 —— 一一对应
-public class User {
-    private Integer id;           // 对应数据库 id 字段
-    private String username;      // 对应 username
-    private Integer age;          // 对应 age
-    private String email;         // 对应 email
-    private Date createTime;      // 对应 create_time（驼峰自动映射！）
+package com.demo.entity;
 
-    // ⚠️ 必须有一个无参构造方法（MyBatis 反射创建对象时要用）
+import java.util.Date;
+
+public class User {
+    // 数据库字段一一对应。驼峰开启后，create_time 自动匹配 createTime
+    private Integer id;
+    private String username;
+    private Integer age;
+    private String email;
+    private Date createTime;
+
+    // 【必须】无参构造 —— MyBatis 反射创建对象时用 Class.newInstance() 调它
     public User() {}
 
-    // 每个字段都要有 getter/setter（MyBatis 通过它们赋值）
+    // getter/setter —— MyBatis 用 setter 注入查询结果，用 getter 获取参数值
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
-    // ... 其他字段同理
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public Date getCreateTime() { return createTime; }
+    public void setCreateTime(Date createTime) { this.createTime = createTime; }
+
+    @Override
+    public String toString() {
+        return "User{id=" + id + ", username='" + username + "', age=" + age + "}";
+    }
 }
 ```
 
-### 为什么 User 类要这么写（三大要求）
+---
 
-| 要求 | 原因 |
-|------|------|
-| **字段名要匹配** | `username` → `username`，驼峰可自动转换 |
-| **必须有无参构造** | MyBatis 用 `Class.newInstance()` 创建对象 |
-| **必须有 getter/setter** | MyBatis 用 setter 注入查询结果，用 getter 获取参数值 |
+### 第五步：工具类（[[SqlSessionFactory]]）
+
+```java
+package com.demo.util;
+
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+import java.io.InputStream;
+
+public class MyBatisUtil {
+    // SqlSessionFactory 是线程安全的，整个应用只创建一次
+    private static SqlSessionFactory sqlSessionFactory;
+
+    static {
+        try {
+            // Resources.getResourceAsStream() 从 classpath 根目录找文件
+            InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+            // Builder 模式：用配置文件构建 SqlSessionFactory
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (Exception e) {
+            // 初始化失败时抛 RuntimeException，项目启动就能发现问题
+            throw new RuntimeException("MyBatis 初始化失败", e);
+        }
+    }
+
+    // false = 关闭自动提交，增删改后需要手动 session.commit()
+    public static SqlSession getSqlSession() {
+        return sqlSessionFactory.openSession(false);
+    }
+
+    // true = 打开自动提交，每执行一次 SQL 自动 commit（查询用这个方便）
+    public static SqlSession getSqlSession(boolean autoCommit) {
+        return sqlSessionFactory.openSession(autoCommit);
+    }
+}
+```
 
 ---
 
-## 第四步：Mapper 接口 —— 写 SQL 的地方（核心！）
+### 第六步：Mapper（两种写法都给你）
 
-这是整个 MyBatis **你最需要看懂的部分**：
+#### 方式 A：注解式（推荐简单 SQL）
 
 ```java
-// Mapper = 映射器 —— 把 SQL 和 Java 方法绑定在一起
-public interface UserMapper {
+package com.demo.mapper;
 
-    // @Select 里面的 SQL，调用 selectAll() 时自动执行
+import com.demo.entity.User;
+import org.apache.ibatis.annotations.*;
+import java.util.List;
+
+public interface UserMapper {
+    // @Select 里的 SQL 就是这个方法的 SQL
     @Select("SELECT * FROM user")
     List<User> selectAll();
 
-    // #{id} 是参数占位符，MyBatis 会自动替换成 ?
-    // 相当于 PrepareStatement 的 setInt(1, id)
+    // #{id} = 占位符，MyBatis 自动用 PreparedStatement 的 ? 替换
+    // 为什么不用 + 拼接？因为 #{id} 防 SQL 注入，+ 拼接会被 SQL 注入攻击
     @Select("SELECT * FROM user WHERE id = #{id}")
     User selectById(Integer id);
 
-    // 新增：方法返回值 int 代表影响的行数
+    // 多参数必须用 @Param 绑定名字，否则 MyBatis 不认识 #{xxx}
+    @Select("SELECT * FROM user WHERE username=#{username} AND age=#{age}")
+    List<User> selectByCondition(@Param("username") String username,
+                                 @Param("age") Integer age);
+
+    // 返回值 int 表示影响的行数
     @Insert("INSERT INTO user(username,age,email) VALUES(#{username},#{age},#{email})")
     int insert(User user);
 
-    // 修改
     @Update("UPDATE user SET username=#{username},age=#{age},email=#{email} WHERE id=#{id}")
     int update(User user);
 
-    // 删除
     @Delete("DELETE FROM user WHERE id=#{id}")
     int delete(Integer id);
 }
 ```
 
-### 这里到底发生了什么？（理解这个你就懂了）
-
-```
-你调用 mapper.selectById(1)
-    ↓
-MyBatis 看到 @Select("SELECT * FROM user WHERE id = #{id}")
-    ↓
-它把 #{id} 替换成你传的参数 1
-    ↓
-生成 SQL：SELECT * FROM user WHERE id = 1
-    ↓
-执行查询，拿到结果集
-    ↓
-看到返回类型是 User，自动把结果集的每一列 → User 的每个字段
-    ↓
-返回给你一个完整的 User 对象
-```
-
-### 四个注解的作用
-
-| 注解 | SQL 类型 | 对应数据库操作 |
-|------|---------|---------------|
-| `@Select` | 查询 | 查（Read） |
-| `@Insert` | 插入 | 增（Create） |
-| `@Update` | 修改 | 改（Update） |
-| `@Delete` | 删除 | 删（Delete） |
-
-### `#{}` 占位符是什么意思
+#### 方式 B：[[XML]] 式（适合复杂 SQL、动态 SQL）
 
 ```java
-@Select("SELECT * FROM user WHERE id = #{id}")
-User selectById(Integer id);
-//                  ↑ 这个参数的值会替换 #{id}
-
-@Insert("INSERT INTO user(username) VALUES(#{username})")
-int insert(User user);
-// user.getUsername() 的值会替换 #{username}
-```
-
-**`#{}` = 占个坑，MyBatis 帮你填**。它自动用 `PreparedStatement` 的 `?` 替换，还能防 SQL 注入。
-
-### 进阶：多参数怎么传
-
-```java
-// 方式1：@Param 指定参数名（推荐，可读性好）
-@Select("SELECT * FROM user WHERE username=#{username} AND age=#{age}")
-List<User> selectByCondition(@Param("username") String username,
-                             @Param("age") Integer age);
-
-// 方式2：Map 传参（适合参数多的时候）
-@Select("SELECT * FROM user WHERE username=#{username} AND age=#{age}")
-List<User> selectByMap(Map<String,Object> map);
-
-// 调用时：
-Map<String,Object> map = new HashMap<>();
-map.put("username","张三");
-map.put("age",22);
-mapper.selectByMap(map);
-```
-
-**两个注意点：**
-- 单参数时不用加 `@Param`（MyBatis 能自己识别）
-- 多参数时**必须加 `@Param`**，否则 MyBatis 不知道 `#{username}` 对应哪个参数
-
----
-
-## 第五步：MyBatisUtil —— 工具类（固定模板）
-
-这个类几乎每个 MyBatis 项目都一样，背下来就行：
-
-```java
-public class MyBatisUtil {
-    // SqlSessionFactory 是重量级对象，整个应用只创建一次
-    private static SqlSessionFactory sqlSessionFactory;
-
-    // 静态代码块：项目启动时自动执行
-    static {
-        try {
-            // 1. 读取 mybatis-config.xml 配置文件
-            String resource = "mybatis-config.xml";
-            InputStream inputStream = Resources.getResourceAsStream(resource);
-            // 2. 用配置文件构建 SqlSessionFactory
-            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // 获取 SqlSession（数据库会话）
-    public static SqlSession getSqlSession() {
-        return sqlSessionFactory.openSession(false);  // false=手动提交事务
-    }
+// UserMapper.java — 只写方法签名，SQL 写在 XML 里
+public interface UserMapper {
+    // namespace + 方法名 = XML 中 sql 的唯一标识
+    List<User> selectAll();
+    User selectById(Integer id);
+    int insert(User user);
 }
 ```
 
-### 三个核心对象的关系
+配套的 `UserMapper.xml`（放在 `src/main/resources/com/demo/mapper/` 下）：
 
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace = 接口的全限定类名
+    MyBatis 根据这个 namespace 找到对应的接口
+-->
+<mapper namespace="com.demo.mapper.UserMapper">
+
+    <!--
+        id = 接口中的方法名
+        resultType = 返回类型（因为配了 typeAliases，所以可以用 User）
+    -->
+    <select id="selectAll" resultType="User">
+        SELECT * FROM user
+    </select>
+
+    <!--
+        parameterType = 参数类型（可以省略，MyBatis 能自动推断）
+        #{id} 和注解一样，预编译占位符
+    -->
+    <select id="selectById" resultType="User">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+
+    <!--
+        useGeneratedKeys + keyProperty：
+        插入后自动把自增 ID 赋值给 user.id，这样你 insert 完就能拿到新 ID
+    -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user(username, age, email)
+        VALUES(#{username}, #{age}, #{email})
+    </insert>
+
+    <!-- 动态 SQL 示例（<if> 标签拼接条件） -->
+    <select id="selectByCondition" resultType="User">
+        SELECT * FROM user WHERE 1=1
+        <if test="username != null and username != ''">
+            AND username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="age != null">
+            AND age = #{age}
+        </if>
+    </select>
+
+</mapper>
 ```
-mybatis-config.xml
-       ↓ 读取
-SqlSessionFactoryBuilder     ← 临时工，用完就扔
-       ↓ build()
-SqlSessionFactory            ← 永久工，整个项目只有一个
-       ↓ openSession()
-SqlSession                   ← 每次操作数据库创建一个，用完关
-       ↓ getMapper()
-UserMapper（代理对象）       ← 自动生成的"翻译官"
-       ↓ 调用方法
-SQL 执行，返回结果
-```
+
+> 用了 XML 式，要在 `[[mybatis-config.xml]]` 中注册：
+> ```xml
+> <mappers>
+>     <mapper resource="com/demo/mapper/UserMapper.xml"/>
+> </mappers>
+> ```
+> 注解式和 XML 式可以混用，但同一个方法不能同时用两种方式。
 
 ---
 
-## 第六步：测试类 —— 真刀真枪跑一遍
+## 实战案例
 
-### 查询所有用户
+### 完整测试类（复制就能跑）
 
 ```java
-@Test
-public void testSelectAll() {
-    // 1. 获取 SqlSession（true = 自动提交事务）
-    try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
-        // 2. 获取 Mapper（MyBatis 自动生成实现类）
-        UserMapper mapper = session.getMapper(UserMapper.class);
-        // 3. 调用方法 = 执行 SQL
-        List<User> userList = mapper.selectAll();
-        // 4. 遍历结果
-        for (User u : userList) {
+package com.demo;
+
+import com.demo.entity.User;
+import com.demo.mapper.UserMapper;
+import com.demo.util.MyBatisUtil;
+import org.apache.ibatis.session.SqlSession;
+import org.junit.Test;
+import java.util.List;
+
+public class MyBatisTest {
+
+    // 1. 查所有用户
+    @Test
+    public void testSelectAll() {
+        // true = 自动提交（查询不需要事务，所以用 true 省事）
+        try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            List<User> userList = mapper.selectAll();
+            for (User u : userList) {
+                System.out.println(u);
+            }
+        } // try-with-resources 自动 session.close()，不用手动关
+    }
+
+    // 2. 查单个用户
+    @Test
+    public void testSelectById() {
+        try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            User u = mapper.selectById(1);
             System.out.println(u);
         }
-    } // try-with-resources → 自动关闭 session
-}
-```
+    }
 
-**三步曲（背下来！）**：
+    // 3. 新增用户
+    @Test
+    public void testInsert() {
+        // 不传 true = 手动提交。为什么？新增是写操作，万一出错了可以回滚
+        try (SqlSession session = MyBatisUtil.getSqlSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            User user = new User();
+            user.setUsername("嘎嘎");
+            user.setAge(31);
+            user.setEmail("gaga@163.com");
+            int rows = mapper.insert(user);
+            System.out.println("新增了 " + rows + " 行，新 ID = " + user.getId());
+            session.commit(); // ⚠️ 不 commit 数据库里没数据！
+        }
+    }
 
-```
-① session.getMapper(xxxMapper.class)   ← 拿到翻译官
-② mapper.方法()                          ← 执行 SQL
-③ 处理结果                               ← 拿数据干活
-```
+    // 4. 修改用户（先查再改经典模式）
+    @Test
+    public void testUpdate() {
+        try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            User u = mapper.selectById(1);  // 先查到
+            u.setUsername("新名字");          // 再改字段
+            u.setAge(99);
+            int rows = mapper.update(u);     // 执行更新
+            System.out.println("修改了 " + rows + " 行");
+        }
+    }
 
-### 新增用户（注意事务提交）
-
-```java
-@Test
-public void testInsert() {
-    // 没传 true → 需要手动提交事务
-    try (SqlSession session = MyBatisUtil.getSqlSession()) {
-        UserMapper mapper = session.getMapper(UserMapper.class);
-        
-        User user = new User();
-        user.setUsername("嘎嘎");
-        user.setAge(31);
-        user.setEmail("gaga@163.com");
-        
-        int rows = mapper.insert(user);  // 执行插入
-        System.out.println("影响了" + rows + "行");
-        
-        session.commit();  // ⚠️ 必须提交事务，否则数据不写入数据库！
+    // 5. 删除用户
+    @Test
+    public void testDelete() {
+        try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            int rows = mapper.delete(2);
+            System.out.println("删除了 " + rows + " 行");
+        }
     }
 }
 ```
 
-### 为什么增删改要提交事务？
+### 项目完整结构
 
 ```
-MyBatis 默认不自动提交
-    ↓
-insert/update/delete 执行后数据在"临时区"
-    ↓
-必须 session.commit() → 数据才真正写入数据库
-    ↓
-或者 openSession(true) → 自动提交
-```
-
-### 修改用户（先查再改）
-
-```java
-@Test
-public void testUpdateById() {
-    try (SqlSession session = MyBatisUtil.getSqlSession(true)) {
-        UserMapper mapper = session.getMapper(UserMapper.class);
-        
-        // 1. 先查出用户
-        User u = mapper.selectById(1);
-        // 2. 修改字段
-        u.setUsername("dongzi");
-        u.setAge(18);
-        u.setEmail("409@qq.com");
-        // 3. 执行更新（根据 id 匹配）
-        int num = mapper.update(u);
-        System.out.println(num);
-    }
-}
+mybatis-demo/
+├── pom.xml
+└── src/
+    ├── main/
+    │   ├── java/com/demo/
+    │   │   ├── entity/User.java
+    │   │   ├── mapper/UserMapper.java
+    │   │   ├── mapper/UserMapper.xml    ← XML 方式
+    │   │   └── util/MyBatisUtil.java
+    │   └── resources/
+    │       ├── mybatis-config.xml
+    │       └── db.properties            ← 数据库密码（不要提交 Git！）
+    └── test/java/com/demo/
+        └── MyBatisTest.java
 ```
 
 ---
 
-## 完整流程总结（一张图）
+## 踩坑记录
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  你的 Java 代码                        │
-│  UserMapper mapper = session.getMapper(...)           │
-│  List<User> list = mapper.selectAll();                │
-└────────────────────┬────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────────┐
-│                  MyBatis 替你干了                       │
-│  1. 从连接池拿连接                                     │
-│  2. 解析 @Select("SQL") → 获取 SQL 语句                │
-│  3. 用 PreparedStatement 替换 #{} 占位符               │
-│  4. 执行 SQL                                          │
-│  5. 遍历 ResultSet，反射创建 User 对象，setter 赋值      │
-│  6. 返回 List<User> 给你                               │
-└─────────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────────┐
-│                   你拿到结果                            │
-│  for (User u : list) { println(u); }                  │
-└─────────────────────────────────────────────────────┘
-```
+> [!warning] 坑1：增删改后数据没变（事务没提交）
+> **现象**：`insert()` 返回了 1，但查数据库发现没数据。
+> **原因**：`openSession()` 默认关闭自动提交。`insert/update/delete` 执行后数据还在「临时区」，必须 `commit()` 才能写入。
+> **解决**：
+> ```java
+> // 方案A：手动提交
+> SqlSession session = factory.openSession(false); // 默认
+> session.insert(...);
+> session.commit();  // 别忘了这行！
+>
+> // 方案B：自动提交（适合简单场景）
+> SqlSession session = factory.openSession(true);  // 自动提交
+> ```
+> **原理**：[[MySQL]] [[InnoDB]] 引擎默认开启事务，不 commit 的话，其他连接看不到数据，数据库重启后数据也会丢失。
 
----
+> [!warning] 坑2：SQL 注入风险（用了 `${}` 而不是 `#{}`）
+> **现象**：用户输入 `' OR 1=1 --` 后，查出了所有数据。
+> **原因**：`${}` 是字符串拼接，用户输入的内容直接拼进 SQL。
+> ```java
+> // ❌ 危险写法
+> @Select("SELECT * FROM user WHERE username = '${name}'")
+> // 用户输入：' OR 1=1 --
+> // 变成：SELECT * FROM user WHERE username = '' OR 1=1 --'
+> // -- 是 SQL 注释，后面的内容被注释掉了，结果查出了所有人！
+>
+> // ✅ 安全写法
+> @Select("SELECT * FROM user WHERE username = #{name}")
+> // #{name} 用 PreparedStatement 的 ? 占位，传入的值被当字符串处理，不会破坏 SQL 结构
+> ```
+> **原则**：永远用 `#{}` 预编译。`${}` 只在动态表名/列名时用（比如 `ORDER BY ${column}`），且必须是可控的代码内部值，不能来自用户输入。
 
-## 常见问题（你没听懂的地方可能在这里）
+> [!warning] 坑3：多参数没加 `@Param` 报错
+> **现象**：`org.apache.ibatis.binding.BindingException: Parameter 'xxx' not found.`
+> **原因**：多参数时 [[MyBatis]] 不知道 `#{xxx}` 对应哪个参数。
+> ```java
+> // ❌ 报错！两个参数 MyBatis 分不清
+> List<User> select(String username, Integer age);
+>
+> // ✅ 正确：@Param 告诉 MyBatis 参数名
+> List<User> select(@Param("username") String username, @Param("age") Integer age);
+>
+> // ✅ 或者用 Map（参数多时推荐）
+> List<User> select(Map<String, Object> params);
+> // map.put("username", "张三"); map.put("age", 22);
+> ```
+> **记住**：单参数不用 `@Param`，多参数必须加，对象参数（如 `User`）不用加（字段名自动匹配 `#{}`）。
 
-### Q1：Mapper 是个接口，没有实现类，怎么调用的？
+> [!warning] 坑4：实体类没有无参构造
+> **现象**：`java.lang.NoSuchMethodException: com.demo.entity.User.<init>()`
+> **原因**：[[MyBatis]] 用 `Class.newInstance()` 反射创建对象，这个方法调的是**无参构造**。如果你写了有参构造没写无参构造，Java 不再提供默认无参构造。
+> ```java
+> // ❌ 会报错
+> public User(String name) { this.username = name; }
+> // 没有写无参构造 → MyBatis 无法创建对象
+>
+> // ✅ 要这样
+> public User() {}  // 显式写出无参构造
+> public User(String name) { this.username = name; }
+> ```
 
-MyBatis 用 **JDK 动态代理** 自动生成了一个实现类。你调 `session.getMapper(UserMapper.class)` 时，MyBatis 在内存中创建了一个"代理对象"，它看到 `@Select("...")` 就知道要执行什么 SQL。**你不用写实现类，MyBatis 替你写了。**
+> [!warning] 坑5：XML Mapper 没注册
+> **现象**：`org.apache.ibatis.binding.BindingException: Invalid bound statement (not found)`
+> **原因**：XML 文件不在 [[MyBatis]] 扫描路径内，或者没在配置中注册。
+> ```xml
+> <!-- 确保 mybatis-config.xml 中有这个： -->
+> <mappers>
+>     <!-- 注解方式用 package -->
+>     <package name="com.demo.mapper"/>
+>     <!-- XML 方式要单独注册（如果用 XML 就不要用上面的 package） -->
+>     <mapper resource="com/demo/mapper/UserMapper.xml"/>
+> </mappers>
+> ```
+> **另外注意**：XML 文件要放在和接口**同包同名**的位置，否则即使注册了也找不到。
 
-### Q2：`#{}` 和 `${}` 有什么区别？
-
-| 占位符 | 原理 | 安全性 |
-|--------|------|--------|
-| `#{id}` | 预编译 `?` | ✅ 防 SQL 注入 |
-| `${id}` | 直接拼字符串 | ❌ 有注入风险 |
-
-**永远用 `#{}`，别用 `${}`**。
-
-### Q3：为什么实体类字段名和数据库不一样也能映射？
-
-因为配置了：
-```xml
-<setting name="mapUnderscoreToCamelCase" value="true"/>
-```
-数据库 `create_time` → Java `createTime`，自动转驼峰。
-
-### Q4：什么时候用 `session.commit()`？
-
-| openSession() 参数 | 行为 |
-|--------------------|------|
-| `openSession(true)` | 自动提交，不用手动 commit |
-| `openSession(false)` 或 `openSession()` | 手动提交，必须 `session.commit()` |
-
-**查询不需要事务，增删改需要**。
-
-### Q5：字段名对不上（不光是驼峰问题）怎么办？
-
-用 `@Results` 注解手动指定映射：
-
-```java
-@Select("SELECT * FROM user WHERE id = #{id}")
-@Results({
-    @Result(column = "数据库列名", property = "实体属性名"),
-    @Result(column = "create_time", property = "createTime")
-})
-User selectById(Integer id);
-```
-
-### Q6：一个用户有多个订单 / 多个角色怎么查？
-
-这是 **关联查询**，用 `@One`（一对一）和 `@Many`（一对多/多对多）注解，见进阶笔记：
-➡️ [[mybatis/MyBatis关联查询|MyBatis关联查询（一对一/一对多/多对多）]]
-
----
-
-## 下一步
-
-➡️ [[mybatis/MyBatis关联查询|MyBatis进阶：关联查询与 @Results 映射]]
+> [!warning] 坑6：数据库连接失败 — Public Key Retrieval 错误
+> **现象**：`CachingSha2PasswordPlugin` 或 `Public Key Retrieval is not allowed`
+> **原因**：MySQL 8.0+ 默认用 `caching_sha2_password` 认证插件，需要获取公钥。
+> **解决**：在 JDBC URL 末尾加 `allowPublicKeyRetrieval=true`。或者把 MySQL 用户改回 `mysql_native_password` 认证方式。
 
 ---
 
-#Java #MyBatis #ORM #数据库 #学习笔记
+## 拓展延伸
+
+### [[MyBatis]] vs [[JDBC]] 对比
+
+| 对比项 | [[JDBC]] | [[MyBatis]] |
+|--------|----------|-------------|
+| 代码量 | 多（连接/语句/结果集/关闭 各写一遍） | 少（只写 SQL + 映射） |
+| SQL 与 Java 耦合 | 硬耦合在代码里 | 分离到注解或 XML |
+| 结果映射 | 手动 `rs.getXxx()` 逐字段 | 自动 + 驼峰 + `@Results` |
+| 参数传递 | `ps.setXxx()` 按索引 | `#{}` 按名字，自动匹配 |
+| 连接管理 | 手动 `close()` | 连接池 + try-with-resources |
+| 性能优化 | 自己写连接池 | 内置一级/二级缓存 |
+| 复杂 SQL | 写起来一样 | 支持动态 SQL（`<if>/<where>/<foreach>`） |
+| 学习成本 | 低（原生） | 中（需要理解代理+映射机制） |
+
+### 生产环境注意事项
+
+1. **连接池调优**：`POOLED` 默认最大连接池大小是 10。高并发时不够，在 `[[mybatis-config.xml]]` 的 `<dataSource>` 里加：
+   ```xml
+   <property name="poolMaximumActiveConnections" value="20"/>
+   <property name="poolMaximumIdleConnections" value="5"/>
+   ```
+
+2. **密码别写死在配置里**：用 `db.properties` 分离配置，在 `.gitignore` 里忽略它。生产环境用环境变量或配置中心（如 [[Nacos]]、[[Apollo]]）。
+
+3. **SQL 日志脱敏**：`STDOUT_LOGGING` 会打印完整 SQL 和参数。生产环境用 [[Logback]] + 过滤，避免把用户手机号、密码打印到日志里。
+
+4. **二级缓存脏读**：[[MyBatis]] 二级缓存是 Mapper 级别的。如果你的多个 Mapper 操作同一张表，一个 Mapper 更新了数据，另一个 Mapper 的缓存还是旧数据。**高并发场景慎用二级缓存，或者手动调 `flushCache=true`。**
+
+5. **Mapper 命名规范**：
+   - 插入：`insert` / `insertBatch`
+   - 删除：`delete` / `deleteById`
+   - 修改：`update` / `updateById`
+   - 查询：`selectById` / `selectList` / `selectPage`
+   - 方法名自解释，不要 `cx`、`xg` 之类的拼音缩写
+
+### 学习路线
+
+- 本篇 → [[mybatis/MyBatis关联查询|关联查询（@One/@Many）]] → [[mybatis/MyBatis建表脚本|完整建表脚本]]
+- 然后 → [[../../02-Java进阶/并发编程核心知识|并发编程]] 和 [[../../04-JVM/index|JVM]]
+- 实战 → [[../Spring Boot核心|Spring Boot 整合 MyBatis]]
+- 配套数据库 → [[../../01-Java基础/数据类型|MySQL 数据类型]]
+
+---
+
+## 知识依赖图
+
+先掌握 [[../../01-Java基础/面向对象三大特性|Java OOP]] · [[../../01-Java基础/异常处理|异常处理]] · [[../../02-Java进阶/集合框架总览|集合]] · [[../../01-Java基础/数据类型|MySQL基础]] → 再学本篇 [[MyBatis]] → 延伸 [[mybatis/MyBatis关联查询|关联查询]] · [[../Spring Boot核心|Spring Boot整合]] · [[../../02-Java进阶/并发编程核心知识|连接池原理]]
+
+---
+
+#技术/框架/MyBatis #技术/Java/数据库 #技术/数据库/MySQL #笔记/进阶之路

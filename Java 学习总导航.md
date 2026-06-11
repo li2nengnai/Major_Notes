@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 topic: Java 学习总导航
-tags: [Java, 编程笔记, 导航]
+tags: [笔记/导航, 技术/Java]
 ---
 
 # ☕ Java 学习总导航

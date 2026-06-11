@@ -1,164 +1,136 @@
 ---
+title: String 与 ArrayList
 created: 2026-06-08
-topic: Java SE 考点复习 - String 与 ArrayList
-tags: [Java, 编程笔记, 考点复习, String, ArrayList]
+tags: [技术/Java/基础, 技术/Java/数据结构, 笔记/考点复习]
 ---
 
-# String 与 ArrayList
+# [[String]] 与 [[ArrayList]]
 
 ## 📌 课程模块
 
 pk008 · String 常用方法/字符串池/ArrayList 集合 · **高频考点**
 
-## 💻 核心代码示例
+## 核心概念
+
+### [[String]] 两种创建方式的区别
 
 ```java
-// 1. String 两种创建方式（内存位置不同！）
-public class StringDemo1 {
-    public static void main(String[] args) {
-        // 方式1：直接双引号（字符串常量池）
-        String name = "IT666";
+String s1 = "hello";             // 字符串常量池（复用）
+String s2 = "hello";             // 复用常量池中的对象
+String s3 = new String("hello"); // 堆中新对象
 
-        // 方式2：new String（堆内存新对象）
-        String rs1 = new String();
-        String rs2 = new String("itheima");
-        char[] chars = {'a', '三', '十'};
-        String rs3 = new String(chars);        // "三十"
-        byte[] bytes = {97, 98, 99};
-        String rs4 = new String(bytes);        // "abc"
-    }
-}
+s1 == s2  → true  （常量池同一对象）
+s1 == s3  → false （堆中不同对象）
+s1.equals(s3) → true（内容相同）
 ```
+
+**原则：内容比较永远用 `equals()`，别用 `==`。**
+
+### [[String]] 不可变性
+
+String 创建后内容不可变，每次修改都返回新对象：
 
 ```java
-// 2. String 常用方法（需要熟记！）
-public class StringDemo2 {
-    public static void main(String[] args) {
-        String s = "Java";
-        System.out.println(s.length());              // 4
-
-        char c = s.charAt(1);                        // 'a'
-        // 遍历方式1
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-        }
-        // 遍历方式2
-        char[] chars = s.toCharArray();
-
-        // ⭐ equals 比较内容（== 比较地址）
-        String s1 = new String("hello");
-        String s2 = new String("hello");
-        System.out.println(s1 == s2);                // false（地址不同）
-        System.out.println(s1.equals(s2));           // true（内容相同）
-
-        System.out.println("ABC".equalsIgnoreCase("abc")); // true
-
-        // substring 包前不包后
-        String s3 = "Java是最好的语言";
-        String rs = s3.substring(0, 8);              // "Java是最好的"
-        String rs2 = s3.substring(5);                // 从索引5到结尾
-
-        String info = "垃圾电影";
-        System.out.println(info.replace("垃圾", "**"));  // "**电影"
-
-        System.out.println("Java".contains("Java")); // true
-        System.out.println("张三丰".startsWith("张"));// true
-
-        String names = "张无忌,周芷若,赵敏";
-        String[] arr = names.split(",");             // [张无忌, 周芷若, 赵敏]
-    }
-}
+String s = "abc";
+s.toUpperCase();
+System.out.println(s);  // "abc"（没变！要重新赋值）
 ```
+
+频繁拼接时用 [[StringBuilder]] 替代：
 
 ```java
-// 3. ArrayList 集合（可变数组）
-import java.util.ArrayList;
-public class ArrayListDemo1 {
-    public static void main(String[] args) {
-        // 创建集合（泛型：指定元素类型）
-        ArrayList<String> list = new ArrayList<>();
+// ❌ 每次 + 都 new StringBuilder
+String s = "";
+for (String x : list) { s += x; }
 
-        // 添加元素
-        list.add("极客");                            // 末尾添加
-        list.add("Java");
-        list.add(1, "MySQL");                       // 指定位置插入
-
-        System.out.println(list);                   // [极客, MySQL, Java]
-
-        // 获取元素
-        String rs = list.get(1);                     // "MySQL"
-
-        // 获取大小
-        System.out.println(list.size());             // 3
-
-        // 删除
-        list.remove(1);                              // 按索引删除，返回被删元素
-        list.remove("Java");                         // 按元素删除（只删第一个匹配）
-
-        // 修改
-        list.set(1, "极客大牛");                      // 替换，返回旧值
-
-        // 遍历
-        for (int i = 0; i < list.size(); i++) {
-            System.out.println(list.get(i));
-        }
-    }
-}
+// ✅ 一个 StringBuilder 搞定
+StringBuilder sb = new StringBuilder();
+for (String x : list) { sb.append(x); }
+String s = sb.toString();
 ```
 
-## 🧩 知识点拆解
+### [[ArrayList]] 集合
 
-### 知识点1：String 两种创建方式的区别
+长度可变的数组，只能存引用类型：
 
-- **是什么**：`"直接量"` 存储在字符串常量池（重复使用），`new String()` 在堆中创建新对象
-- **老师强调的要点**（**必考！**）：
-  - `"直接量"` 形式：内容相同时复用常量池中已有对象，`==` 为 true
-  - `new String()`：每次创建新对象，即使内容相同 `==` 也是 false
-  - 字符串内容比较**必须用 `equals()`**，不能用 `==`
+```java
+ArrayList<String> list = new ArrayList<>();
+list.add("Java");        // 末尾添加
+list.get(0);             // 获取
+list.size();             // 大小
+list.remove(0);          // 按索引删除
+list.remove("Java");     // 按元素删除（只有第一次出现的）
+list.set(0, "新值");     // 修改
+```
 
-### 知识点2：String 的不可变性
+## 语法格式
 
-- **是什么**：String 对象创建后内容不可变，每次修改都会创建新对象
-- **老师强调的要点**：
-  - `replace()`、`substring()` 等方法都返回新字符串，原字符串不变
-  - 字符串频繁拼接 → 产生大量垃圾对象，性能差 → 改用 `StringBuilder`
+### String 常用方法
 
-### 知识点3：ArrayList 集合
+```java
+s.length()                  // 长度
+s.charAt(i)                 // 第 i 个字符
+s.equals("xx")              // 比较内容
+s.equalsIgnoreCase("XX")   // 忽略大小写比较
+s.substring(0, 8)           // 截取 [0,8)
+s.replace("旧", "新")       // 替换
+s.contains("xx")            // 是否包含
+s.startsWith("x")           // 是否以 x 开头
+s.split(",")                // 按逗号分割
+```
 
-- **是什么**：长度可变的数组，存储引用类型数据
-- **在代码中的作用**：替代固定长度数组，灵活添加/删除元素
-- **老师强调的要点**：
-  - 泛型 `<>` 中**不能放基本类型**：`ArrayList<int>` ❌ → 要放包装类 `ArrayList<Integer>` ✅
-  - `add(index, element)` 插入时后续元素后移
-  - `remove(Object)` 删除的是**第一次出现的**该元素
-  - 遍历时增删元素注意索引变化
+### 遍历方式
 
-## ⚠️ 常见考题 / 易错点
+```java
+// 方式1：charAt
+for (int i = 0; i < s.length(); i++) {
+    char ch = s.charAt(i);
+}
 
-1. **选择题——String 比较**：
-   ```java
-   String s1 = "abc";
-   String s2 = "abc";
-   String s3 = new String("abc");
-   System.out.println(s1 == s2);       // true（常量池）
-   System.out.println(s1 == s3);       // false（堆中不同对象）
-   System.out.println(s1.equals(s3));  // true（内容相同）
-   ```
+// 方式2：toCharArray
+for (char ch : s.toCharArray()) { }
+```
 
-2. **选择题——String 不可变性**：
-   ```java
-   String s = "abc";
-   s.toUpperCase();
-   System.out.println(s);             // "abc"（原字符串不变，需要重新赋值）
-   ```
+## 踩坑记录
 
-3. **选择题——ArrayList 泛型**：以下哪个正确？
-   - `ArrayList<int>` ❌
-   - `ArrayList<Integer>` ✅
-   - `ArrayList<Object>` ✅
+> [!warning] `==` 比较 String 内容
+> **现象**：`s1 == s2` 有时 true 有时 false，结果不确定
+> ```java
+> String s1 = "abc";
+> String s2 = "abc";
+> String s3 = new String("abc");
+> System.out.println(s1 == s2);   // true（常量池）
+> System.out.println(s1 == s3);   // false（堆中）
+> ```
+> **规则**：`==` 比较引用地址，`equals()` 比较内容。
 
-4. **编程题——字符串处理**：统计字符出现次数、手机号屏蔽、敏感词替换
+> [!warning] ArrayList 泛型不支持基本类型
+> ```java
+> ArrayList<int> list = new ArrayList<>();  // ❌ 编译错误
+> ArrayList<Integer> list = new ArrayList<>(); // ✅ 用包装类
+> ```
+> 基本类型泛型需用包装类：`Integer`、`Double`、`Boolean` 等。
+
+## 实战案例
+
+```java
+// 字符串遍历统计字符
+String s = "hello";
+int count = 0;
+for (int i = 0; i < s.length(); i++) {
+    if (s.charAt(i) == 'l') count++;
+}
+System.out.println("l 出现了 " + count + " 次");
+```
+
+## 拓展延伸
+
+→ [[14-集合框架]] · [[12-常用API|StringBuilder]] · [[../../Java进阶之路/01-Java基础/String深入理解]]
+
+## 知识依赖图
+
+先掌握 [[06-数组|数组]] · [[08-面向对象基础|OOP]] → 再学本篇 → 延伸 [[14-集合框架|集合框架]] · [[12-常用API|StringBuilder/StringBuffer]]
 
 ---
 
-#Java #编程笔记 #考点复习 #String #ArrayList
+#技术/Java/基础 #技术/Java/数据结构 #笔记/考点复习

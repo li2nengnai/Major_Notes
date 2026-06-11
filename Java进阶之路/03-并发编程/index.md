@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/thread/
-tags: [java, 并发, 线程, 多线程]
+tags: [笔记/进阶之路, 技术/Java/并发, 导航]
 ---
 
 # 🔁 并发编程

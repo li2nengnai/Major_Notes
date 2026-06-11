@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/
-tags: [java, 基础]
+tags: [笔记/进阶之路, 技术/Java/基础, 导航]
 ---
 
 # ☕ Java 基础

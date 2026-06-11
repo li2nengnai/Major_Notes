@@ -1,7 +1,7 @@
 ---
 created: 2026-06-08
 source: https://javabetter.cn/interview/
-tags: [java, 面试]
+tags: [笔记/进阶之路, 技术/Java/面试, 导航]
 ---
 
 # 🎯 面试突击
